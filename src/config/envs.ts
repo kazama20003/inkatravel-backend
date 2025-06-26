@@ -16,6 +16,7 @@ interface EnvVars {
   GOOGLE_CLIENT_SECRET: string;
   FACEBOOK_APP_ID: string;
   FACEBOOK_APP_SECRET: string;
+  ENABLE_SWAGGER?: string;
 }
 
 const envsSchema = joi
@@ -26,20 +27,18 @@ const envsSchema = joi
       .string()
       .valid('development', 'production', 'test')
       .default('development'),
-
     JWT_SECRET: joi.string().required(),
     CLERK_SECRET_KEY: joi.string().required(),
     CLOUDINARY_CLOUD_NAME: joi.string().required(),
     CLOUDINARY_API_KEY: joi.string().required(),
     CLOUDINARY_API_SECRET: joi.string().required(),
-
     GOOGLE_CLIENT_ID: joi.string().required(),
     GOOGLE_CLIENT_SECRET: joi.string().required(),
-
     FACEBOOK_APP_ID: joi.string().required(),
     FACEBOOK_APP_SECRET: joi.string().required(),
+    ENABLE_SWAGGER: joi.string().valid('true', 'false').optional(),
   })
-  .unknown(true); // permite otras variables no validadas
+  .unknown(true);
 
 const { error, value } = envsSchema.validate(process.env) as {
   error?: Error;
@@ -69,4 +68,5 @@ export const envs = {
     appId: value.FACEBOOK_APP_ID,
     appSecret: value.FACEBOOK_APP_SECRET,
   },
+  enableSwagger: value.ENABLE_SWAGGER === 'true',
 };

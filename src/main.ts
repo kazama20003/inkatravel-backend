@@ -38,8 +38,8 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger solo en desarrollo
-  if (envs.nodeEnv !== 'production') {
+  // Mostrar Swagger si está habilitado
+  if (envs.enableSwagger) {
     const config = new DocumentBuilder()
       .setTitle('API Peru Travel')
       .setDescription(
@@ -52,7 +52,7 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
-  // Errores globales no capturados
+  // Errores globales
   process.on('uncaughtException', (err) => {
     logger.error('❌ Uncaught Exception:', err);
   });
@@ -64,7 +64,7 @@ async function bootstrap() {
   // Iniciar servidor
   await app.listen(envs.port);
   logger.log(`✅ Backend running at http://localhost:${envs.port}/api`);
-  if (envs.nodeEnv !== 'production') {
+  if (envs.enableSwagger) {
     logger.log(`📘 Swagger docs at http://localhost:${envs.port}/docs`);
   }
 }
