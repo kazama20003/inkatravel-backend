@@ -32,7 +32,7 @@ export class AuthController {
       };
     };
 
-    const frontendUrl = 'http://localhost:3001/login-success'; // página puente
+    const frontendUrl = 'http://cabanacondecuscobybus.com/login-success'; // página puente
     const token = user.access_token;
 
     res.redirect(`${frontendUrl}?token=${token}`);
