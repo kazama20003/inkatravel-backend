@@ -23,7 +23,7 @@ async function bootstrap() {
   app.enableCors({
     origin:
       envs.nodeEnv === 'production'
-        ? ['https://cabanacondecuscobybus.com/']
+        ? ['https://cabanacondecuscobybus.com']
         : '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
