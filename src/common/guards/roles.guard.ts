@@ -23,7 +23,7 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles) return true;
 
     const request = context.switchToHttp().getRequest<Request>();
-    const user = request.user as DecodedUser; // 👈 CAST explícito
+    const user = request.user as DecodedUser;
 
     if (!user || !requiredRoles.includes(user.role)) {
       throw new ForbiddenException('No tienes permisos para acceder');

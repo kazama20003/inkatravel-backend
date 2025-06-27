@@ -68,4 +68,27 @@ export class CartController {
     const userId = req.user.userId;
     return await this.cartService.removeItemFromCart(cartId, userId, tourId);
   }
+  @Patch('items/:tourId')
+  @UseGuards(AuthGuard('jwt'))
+  async updateItem(
+    @Param('tourId') tourId: string,
+    @Body()
+    body: {
+      cartId: string;
+      people?: number;
+      startDate?: string;
+      notes?: string;
+    },
+    @Req() req: RequestWithUser,
+  ) {
+    const userId = req.user.userId;
+    return this.cartService.updateCartItem(
+      body.cartId,
+      userId,
+      tourId,
+      body.people,
+      body.startDate,
+      body.notes,
+    );
+  }
 }

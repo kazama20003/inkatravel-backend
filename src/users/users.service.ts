@@ -5,16 +5,19 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, isValidObjectId, Types } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument } from './entities/user.entity';
 import { PaginationDto } from 'src/common';
+import { Order, OrderDocument } from 'src/orders/entities/order.entity'; // ajusta la ruta si es diferente
+
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<UserDocument> {
@@ -142,6 +145,66 @@ export class UsersService {
       throw new InternalServerErrorException(
         'Error al obtener los nombres de los usuarios.',
       );
+    }
+  }
+  async getProfile(userId: string): Promise<{ message: string; data: any }> {
+    try {
+      // ✅ Validar si el ID es un ObjectId válido
+      if (!userId || !isValidObjectId(userId)) {
+        throw new BadRequestException(`ID de usuario inválido: "${userId}"`);
+      }
+
+      // 🔎 Buscar usuario
+      const user = await this.userModel.findById(userId).exec();
+      if (!user) {
+        throw new NotFoundException(
+          `Usuario con ID "${userId}" no encontrado.`,
+        );
+      }
+
+      const orders = await this.orderModel
+        .find({ user: new Types.ObjectId(userId) })
+        .populate('items.tour')
+        .populate('appliedOffer')
+        .exec();
+
+      return {
+        message: 'Perfil del usuario obtenido correctamente.',
+        data: {
+          user,
+          orders,
+        },
+      };
+    } catch (error) {
+      console.error('❌ Error al obtener el perfil:', error);
+      throw new InternalServerErrorException('Error al obtener el perfil.');
+    }
+  }
+
+  async updateProfile(
+    userId: string,
+    updateUserDto: UpdateUserDto,
+  ): Promise<{ message: string; data: User }> {
+    try {
+      const user = await this.userModel
+        .findByIdAndUpdate(userId, updateUserDto, {
+          new: true,
+          runValidators: true,
+        })
+        .exec();
+
+      if (!user) {
+        throw new NotFoundException(
+          `Usuario con ID "${userId}" no encontrado.`,
+        );
+      }
+
+      return {
+        message: 'Perfil actualizado correctamente.',
+        data: user,
+      };
+    } catch {
+      throw new InternalServerErrorException('Error al actualizar el perfil.');
     }
   }
 }

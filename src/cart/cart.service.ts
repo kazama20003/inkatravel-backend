@@ -223,4 +223,54 @@ export class CartService {
       data: saved,
     };
   }
+  async updateCartItem(
+    cartId: string,
+    userId: string,
+    tourId: string,
+    people?: number,
+    startDate?: string,
+    notes?: string,
+  ) {
+    if (!isValidObjectId(cartId) || !isValidObjectId(tourId)) {
+      throw new BadRequestException('ID inválido');
+    }
+
+    const cart = await this.cartModel.findById(cartId);
+    if (!cart) {
+      throw new NotFoundException(`No se encontró el carrito con ID ${cartId}`);
+    }
+
+    if (cart.userId?.toString() !== userId) {
+      throw new UnauthorizedException('No tienes acceso a este carrito');
+    }
+
+    const item = cart.items.find((i) => i.tour.toString() === tourId);
+    if (!item) {
+      throw new NotFoundException('El tour no se encontró en el carrito');
+    }
+
+    // 🔁 Actualizar campos si se enviaron
+    if (people !== undefined) {
+      item.people = people;
+      item.total = item.pricePerPerson * people;
+    }
+
+    if (startDate) {
+      item.startDate = new Date(startDate);
+    }
+
+    if (notes !== undefined) {
+      item.notes = notes;
+    }
+
+    // 🔄 Recalcular total del carrito
+    cart.totalPrice = cart.items.reduce((sum, i) => sum + i.total, 0);
+
+    const saved = await cart.save();
+
+    return {
+      message: '✅ Ítem del carrito actualizado correctamente',
+      data: saved,
+    };
+  }
 }
