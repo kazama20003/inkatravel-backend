@@ -198,4 +198,46 @@ export class ToursService {
       );
     }
   }
+  async findTransportTours(paginationDto: PaginationDto): Promise<{
+    message: string;
+    data: Tour[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    try {
+      const [tours, total] = await Promise.all([
+        this.tourModel
+          .find({ category: 'Transporte Turistico' })
+          .skip(skip)
+          .limit(limit)
+          .populate('transportOptionIds')
+          .exec(),
+        this.tourModel.countDocuments({ category: 'Transporte Turistico' }),
+      ]);
+
+      return {
+        message: tours.length
+          ? 'Tours de transporte turístico obtenidos correctamente.'
+          : 'No hay tours de transporte turístico registrados.',
+        data: tours,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch {
+      throw new InternalServerErrorException(
+        'Error al obtener los tours de transporte turístico.',
+      );
+    }
+  }
 }

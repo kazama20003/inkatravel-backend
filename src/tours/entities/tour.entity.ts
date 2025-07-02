@@ -6,8 +6,11 @@ export type TourDocument = Tour & Document;
 export enum TourCategory {
   Aventura = 'Aventura',
   Cultural = 'Cultural',
-  Relax = 'Relax',
+  Relajacion = 'Relajación',
   Naturaleza = 'Naturaleza',
+  Trekking = 'Trekking', // Aceptable, es común en turismo
+  Panoramico = 'Panoramico',
+  TransporteTuristico = 'Transporte Turistico',
 }
 
 export enum PackageType {

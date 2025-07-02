@@ -13,6 +13,7 @@ import { OffersModule } from './offers/offers.module';
 import { PaymentsModule } from './payments/payments.module';
 import { CartModule } from './cart/cart.module';
 import { TransportModule } from './transport/transport.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { TransportModule } from './transport/transport.module';
     PaymentsModule,
     CartModule,
     TransportModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

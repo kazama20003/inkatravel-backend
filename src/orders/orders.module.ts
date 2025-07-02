@@ -16,5 +16,6 @@ import { ToursModule } from 'src/tours/tours.module';
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
+  exports: [MongooseModule],
 })
 export class OrdersModule {}

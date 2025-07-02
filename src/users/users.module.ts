@@ -14,6 +14,6 @@ import { Order, OrderSchema } from 'src/orders/entities/order.entity'; // Asegú
   ],
   controllers: [UsersController],
   providers: [UsersService],
-  exports: [UsersService],
+  exports: [UsersService, MongooseModule],
 })
 export class UsersModule {}

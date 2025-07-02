@@ -24,7 +24,9 @@ import {
   ApiTags,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 @ApiTags('Usuarios')
 @Controller('users')
 export class UsersController {
@@ -41,6 +43,8 @@ export class UsersController {
 
   // 📄 Listar usuarios con paginación
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- esto protege con token Y rol
+  @Roles('admin')
   @ApiOperation({ summary: 'Listar usuarios con paginación' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
@@ -51,6 +55,8 @@ export class UsersController {
 
   // 👤 Obtener todos los usuarios (solo id y nombre)
   @Get('names')
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- esto protege con token Y rol
+  @Roles('admin')
   @ApiOperation({ summary: 'Obtener todos los usuarios solo con id y nombre' })
   @ApiResponse({ status: 200, description: 'Lista de nombres de usuarios' })
   findAllNames() {
@@ -66,6 +72,8 @@ export class UsersController {
 
   // 🔍 Obtener usuario por ID
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- esto protege con token Y rol
+  @Roles('admin')
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiParam({ name: 'id', description: 'ID del usuario' })
   @ApiResponse({ status: 200, description: 'Usuario encontrado' })
@@ -76,6 +84,8 @@ export class UsersController {
 
   // ✏️ Actualizar usuario por ID
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- esto protege con token Y rol
+  @Roles('admin')
   @ApiOperation({ summary: 'Actualizar usuario por ID' })
   @ApiParam({ name: 'id', description: 'ID del usuario' })
   @ApiResponse({
@@ -89,6 +99,8 @@ export class UsersController {
 
   // 🗑️ Eliminar usuario por ID
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- esto protege con token Y rol
+  @Roles('admin')
   @ApiOperation({ summary: 'Eliminar usuario por ID' })
   @ApiParam({ name: 'id', description: 'ID del usuario' })
   @ApiResponse({ status: 200, description: 'Usuario eliminado correctamente' })

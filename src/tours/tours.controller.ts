@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ToursService } from './tours.service';
 import { CreateTourDto } from './dto/create-tour.dto';
@@ -22,17 +23,27 @@ import {
 import { FilterTourDto } from './dto/dto/filter-tour.dto';
 import { Difficulty, PackageType } from './dto/create-tour.dto';
 import { TourCategory } from './entities/tour.entity';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
 @ApiTags('Tours') // 🏷 Agrupa los endpoints bajo la etiqueta 'Tours'
 @Controller('tours')
 export class ToursController {
   constructor(private readonly toursService: ToursService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- esto protege con token Y rol
+  @Roles('admin')
   @ApiOperation({ summary: 'Crear un nuevo tour' })
   @ApiResponse({ status: 201, description: 'Tour creado exitosamente.' })
   @ApiResponse({ status: 500, description: 'Error del servidor.' })
   create(@Body() createTourDto: CreateTourDto) {
     return this.toursService.create(createTourDto);
+  }
+
+  @Get('transport')
+  async getTransportTours(@Query() paginationDto: PaginationDto) {
+    return this.toursService.findTransportTours(paginationDto);
   }
 
   @Get()
@@ -92,6 +103,8 @@ export class ToursController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- esto protege con token Y rol
+  @Roles('admin')
   @ApiOperation({ summary: 'Actualizar un tour por ID' })
   @ApiParam({ name: 'id', description: 'ID del tour', type: String })
   @ApiResponse({ status: 200, description: 'Tour actualizado correctamente.' })
@@ -101,6 +114,8 @@ export class ToursController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- esto protege con token Y rol
+  @Roles('admin')
   @ApiOperation({ summary: 'Eliminar un tour por ID' })
   @ApiParam({ name: 'id', description: 'ID del tour', type: String })
   @ApiResponse({ status: 200, description: 'Tour eliminado correctamente.' })
