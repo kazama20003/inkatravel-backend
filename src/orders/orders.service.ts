@@ -135,9 +135,9 @@ export class OrdersService {
   async findOne(id: string) {
     const order = await this.orderModel
       .findById(id)
-      .populate('tour', 'title imageUrl price')
+      .populate('items.tour', 'title imageUrl price') // ✅ CORRECTO
       .populate('appliedOffer', 'title discountPercentage')
-      .populate('user', 'fullName email') // 👈 incluir datos del usuario
+      .populate('user', 'fullName email')
       .exec();
 
     if (!order) {
@@ -153,9 +153,9 @@ export class OrdersService {
   async update(id: string, updateOrderDto: UpdateOrderDto) {
     const updated = await this.orderModel
       .findByIdAndUpdate(id, updateOrderDto, { new: true })
-      .populate('tour', 'title imageUrl price')
+      .populate('items.tour', 'title imageUrl price') // ✅ CORRECTO
       .populate('appliedOffer', 'title')
-      .populate('user', 'fullName email') // 👈 actualizar también con populate
+      .populate('user', 'fullName email')
       .exec();
 
     if (!updated) {
