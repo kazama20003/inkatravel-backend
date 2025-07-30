@@ -1,17 +1,79 @@
-import { IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import {
+  IsString,
+  IsIn,
+  IsArray,
+  ValidateNested,
+  IsNumberString,
+  IsNumber,
+  IsEmail,
+  IsOptional,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+class PaymentFormDto {
+  @IsIn(['card'])
+  type: string;
+
+  @IsString()
+  pan: string; // Antes: cardNumber
+
+  @IsString()
+  cardScheme: string;
+
+  @IsNumberString()
+  expiryMonth: string;
+
+  @IsNumberString()
+  expiryYear: string;
+
+  @IsString()
+  securityCode: string;
+
+  @IsOptional()
+  @IsString()
+  paymentMeanBrand?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentMethodToken?: string;
+}
+
+class CustomerDto {
+  @IsEmail()
+  email: string;
+
+  @IsOptional()
+  @IsString()
+  billingFirstName?: string;
+
+  @IsOptional()
+  @IsString()
+  billingLastName?: string;
+}
 
 export class CreatePaymentDto {
+  @IsNumber()
+  amount: number;
+
   @IsString()
-  @IsNotEmpty()
+  currency: string;
+
+  @IsString()
   orderId: string;
 
-  @IsNumber()
-  amount: number; // En centavos: 10.00 => 1000
+  @ValidateNested()
+  @Type(() => CustomerDto)
+  customer: CustomerDto;
 
-  @IsEmail()
-  customerEmail: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentFormDto)
+  paymentForms: PaymentFormDto[];
 
   @IsString()
-  @IsNotEmpty()
-  customerName: string;
+  formAction: string;
+
+  @IsOptional()
+  @IsString()
+  contextMode?: 'TEST' | 'PRODUCTION';
 }

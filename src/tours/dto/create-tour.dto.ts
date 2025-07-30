@@ -2,40 +2,32 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
-  IsNotEmpty,
+  IsMongoId,
   IsNumber,
   IsOptional,
   IsPositive,
   IsString,
-  Min,
   ValidateNested,
-  IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TourCategory } from '../entities/tour.entity';
+import { TranslatedTextDto } from 'src/common/dto/translated-text.dto';
+import { TourCategory, PackageType } from '../entities/tour.entity';
 
-// Enums
 export enum Difficulty {
   Fácil = 'Facil',
   Moderado = 'Moderado',
-  Difícil = 'Difícil',
+  Difícil = 'Dificil',
 }
 
-export enum PackageType {
-  Basico = 'Basico',
-  Premium = 'Premium',
-}
-
-// Subschemas DTOs
-
-export class RoutePointDto {
-  @IsString()
-  @IsNotEmpty()
-  location: string;
+class RoutePointDto {
+  @ValidateNested()
+  @Type(() => TranslatedTextDto)
+  location: TranslatedTextDto;
 
   @IsOptional()
-  @IsString()
-  description?: string;
+  @ValidateNested()
+  @Type(() => TranslatedTextDto)
+  description?: TranslatedTextDto;
 
   @IsOptional()
   @IsString()
@@ -46,22 +38,22 @@ export class RoutePointDto {
   imageUrl?: string;
 }
 
-export class ItineraryDayDto {
+class ItineraryDayDto {
   @IsNumber()
-  @Min(1)
   day: number;
 
-  @IsString()
-  @IsNotEmpty()
-  title: string;
+  @ValidateNested()
+  @Type(() => TranslatedTextDto)
+  title: TranslatedTextDto;
 
-  @IsString()
-  @IsNotEmpty()
-  description: string;
+  @ValidateNested()
+  @Type(() => TranslatedTextDto)
+  description: TranslatedTextDto;
 
   @IsArray()
-  @IsString({ each: true })
-  activities: string[];
+  @ValidateNested({ each: true })
+  @Type(() => TranslatedTextDto)
+  activities: TranslatedTextDto[]; // ✅ ahora multilingüe
 
   @IsOptional()
   @IsArray()
@@ -80,26 +72,22 @@ export class ItineraryDayDto {
   @IsString()
   imageUrl?: string;
 
-  @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RoutePointDto)
-  @IsArray()
   route: RoutePointDto[];
 }
 
-// DTO principal
-
 export class CreateTourDto {
-  @IsString()
-  @IsNotEmpty()
-  title: string;
+  @ValidateNested()
+  @Type(() => TranslatedTextDto)
+  title: TranslatedTextDto;
+
+  @ValidateNested()
+  @Type(() => TranslatedTextDto)
+  subtitle: TranslatedTextDto;
 
   @IsString()
-  @IsNotEmpty()
-  subtitle: string;
-
-  @IsString()
-  @IsNotEmpty()
   imageUrl: string;
 
   @IsOptional()
@@ -114,24 +102,20 @@ export class CreateTourDto {
   @IsNumber()
   originalPrice?: number;
 
-  @IsString()
-  @IsNotEmpty()
-  duration: string;
+  @ValidateNested()
+  @Type(() => TranslatedTextDto)
+  duration: TranslatedTextDto;
 
   @IsNumber()
-  @Min(0)
   rating: number;
 
   @IsNumber()
-  @Min(0)
   reviews: number;
 
   @IsString()
-  @IsNotEmpty()
   location: string;
 
   @IsString()
-  @IsNotEmpty()
   region: string;
 
   @IsEnum(TourCategory)
@@ -144,8 +128,9 @@ export class CreateTourDto {
   packageType: PackageType;
 
   @IsArray()
-  @IsString({ each: true })
-  highlights: string[];
+  @ValidateNested({ each: true })
+  @Type(() => TranslatedTextDto)
+  highlights: TranslatedTextDto[];
 
   @IsOptional()
   @IsBoolean()
@@ -156,33 +141,35 @@ export class CreateTourDto {
   @IsMongoId({ each: true })
   transportOptionIds?: string[];
 
-  @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ItineraryDayDto)
-  @IsArray()
-  itinerary?: ItineraryDayDto[];
+  itinerary: ItineraryDayDto[];
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  includes?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => TranslatedTextDto)
+  includes?: TranslatedTextDto[];
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  notIncludes?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => TranslatedTextDto)
+  notIncludes?: TranslatedTextDto[];
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  toBring?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => TranslatedTextDto)
+  toBring?: TranslatedTextDto[];
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  conditions?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => TranslatedTextDto)
+  conditions?: TranslatedTextDto[];
 
   @IsString()
-  @IsNotEmpty()
   slug: string;
 }

@@ -21,7 +21,8 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { FilterTourDto } from './dto/dto/filter-tour.dto';
-import { Difficulty, PackageType } from './dto/create-tour.dto';
+import { Difficulty } from './dto/create-tour.dto';
+import { PackageType } from './entities/tour.entity';
 import { TourCategory } from './entities/tour.entity';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -45,7 +46,6 @@ export class ToursController {
   async getTransportTours(@Query() paginationDto: PaginationDto) {
     return this.toursService.findTransportTours(paginationDto);
   }
-
   @Get()
   @ApiOperation({ summary: 'Obtener todos los tours con filtros y paginación' })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -82,15 +82,23 @@ export class ToursController {
   }
 
   @Get('slug/:slug')
-  @ApiOperation({ summary: 'Obtener un tour por slug' })
-  @ApiParam({ name: 'slug', description: 'Slug del tour', type: String })
+  @ApiOperation({ summary: 'Obtener un tour por slug con traducción' })
+  @ApiQuery({
+    name: 'lang',
+    required: false,
+    type: String,
+    description: 'Idioma (es o en)',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Tour obtenido correctamente por slug.',
+    description: 'Tour obtenido correctamente por slug',
   })
   @ApiResponse({ status: 404, description: 'Tour no encontrado.' })
-  findBySlug(@Param('slug') slug: string) {
-    return this.toursService.findBySlug(slug);
+  findBySlug(
+    @Param('slug') slug: string,
+    @Query('lang') lang: 'es' | 'en' = 'es',
+  ) {
+    return this.toursService.findBySlug(slug, lang);
   }
 
   @Get(':id')

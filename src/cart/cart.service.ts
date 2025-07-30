@@ -30,9 +30,10 @@ export class CartService {
       throw new BadRequestException('El carrito no puede estar vacío.');
     }
 
-    // ✅ Conversión segura de datos
+    // 🛠 Conversión segura y soporta Tour y TourTransport
     const cartItems = items.map((item) => ({
-      tour: new Types.ObjectId(item.tour),
+      productType: item.productType,
+      productId: new Types.ObjectId(item.productId),
       startDate: new Date(item.startDate),
       people: item.people,
       pricePerPerson: item.pricePerPerson,
@@ -52,7 +53,7 @@ export class CartService {
       const updated = await existingCart.save();
 
       return {
-        message: '🛒 Tours añadidos a tu carrito existente',
+        message: '🛒 Productos añadidos a tu carrito existente',
         data: updated,
       };
     }
@@ -139,7 +140,7 @@ export class CartService {
       // Validamos cada item (esto se recomienda pero es opcional si ya pasaron DTO)
       for (const item of updateCartDto.items) {
         if (
-          !item.tour ||
+          !item.productId ||
           !item.startDate ||
           item.people < 1 ||
           item.total < 0
@@ -190,13 +191,12 @@ export class CartService {
       data: { id: cart._id },
     };
   }
-  async removeItemFromCart(cartId: string, userId: string, tourId: string) {
-    if (!isValidObjectId(cartId) || !isValidObjectId(tourId)) {
+  async removeItemFromCart(cartId: string, userId: string, productId: string) {
+    if (!isValidObjectId(cartId) || !isValidObjectId(productId)) {
       throw new BadRequestException('ID inválido');
     }
 
     const cart = await this.cartModel.findById(cartId);
-
     if (!cart) {
       throw new NotFoundException(`No se encontró el carrito con ID ${cartId}`);
     }
@@ -207,31 +207,33 @@ export class CartService {
 
     const originalLength = cart.items.length;
 
-    cart.items = cart.items.filter((item) => item.tour.toString() !== tourId);
+    cart.items = cart.items.filter(
+      (item) => item.productId.toString() !== productId,
+    );
 
     if (cart.items.length === originalLength) {
-      throw new NotFoundException('El tour no se encontró en el carrito');
+      throw new NotFoundException('El producto no se encontró en el carrito');
     }
 
-    // Recalcular total
     cart.totalPrice = cart.items.reduce((sum, i) => sum + i.total, 0);
 
     const saved = await cart.save();
 
     return {
-      message: '🗑️ Tour eliminado del carrito',
+      message: '🗑️ Producto eliminado del carrito',
       data: saved,
     };
   }
+
   async updateCartItem(
     cartId: string,
     userId: string,
-    tourId: string,
+    productId: string,
     people?: number,
     startDate?: string,
     notes?: string,
   ) {
-    if (!isValidObjectId(cartId) || !isValidObjectId(tourId)) {
+    if (!isValidObjectId(cartId) || !isValidObjectId(productId)) {
       throw new BadRequestException('ID inválido');
     }
 
@@ -244,12 +246,12 @@ export class CartService {
       throw new UnauthorizedException('No tienes acceso a este carrito');
     }
 
-    const item = cart.items.find((i) => i.tour.toString() === tourId);
+    const item = cart.items.find((i) => i.productId.toString() === productId);
+
     if (!item) {
-      throw new NotFoundException('El tour no se encontró en el carrito');
+      throw new NotFoundException('El producto no se encontró en el carrito');
     }
 
-    // 🔁 Actualizar campos si se enviaron
     if (people !== undefined) {
       item.people = people;
       item.total = item.pricePerPerson * people;
@@ -263,7 +265,6 @@ export class CartService {
       item.notes = notes;
     }
 
-    // 🔄 Recalcular total del carrito
     cart.totalPrice = cart.items.reduce((sum, i) => sum + i.total, 0);
 
     const saved = await cart.save();

@@ -14,11 +14,11 @@ import { PaymentsModule } from './payments/payments.module';
 import { CartModule } from './cart/cart.module';
 import { TransportModule } from './transport/transport.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-
+import { TourTransportModule } from './tour-transport/tour-transport.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // para que esté disponible en todos los módulos
+      isGlobal: true,
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -37,6 +37,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     CartModule,
     TransportModule,
     DashboardModule,
+    TourTransportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

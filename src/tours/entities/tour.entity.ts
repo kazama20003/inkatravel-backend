@@ -8,7 +8,7 @@ export enum TourCategory {
   Cultural = 'Cultural',
   Relajacion = 'Relajación',
   Naturaleza = 'Naturaleza',
-  Trekking = 'Trekking', // Aceptable, es común en turismo
+  Trekking = 'Trekking',
   Panoramico = 'Panoramico',
   TransporteTuristico = 'Transporte Turistico',
 }
@@ -20,11 +20,11 @@ export enum PackageType {
 
 @Schema()
 class RoutePoint {
-  @Prop({ required: true })
-  location: string;
+  @Prop({ type: Object, required: true })
+  location: Record<string, string>;
 
-  @Prop()
-  description?: string;
+  @Prop({ type: Object })
+  description?: Record<string, string>;
 
   @Prop()
   imageId?: string;
@@ -40,14 +40,14 @@ class ItineraryDay {
   @Prop({ required: true })
   day: number;
 
-  @Prop({ required: true })
-  title: string;
+  @Prop({ type: Object, required: true })
+  title: Record<string, string>;
 
-  @Prop({ required: true })
-  description: string;
+  @Prop({ type: Object, required: true })
+  description: Record<string, string>;
 
-  @Prop([String])
-  activities: string[];
+  @Prop({ type: [Object], default: [] })
+  activities: Record<string, string>[]; // ✅ Ahora multilenguaje
 
   @Prop([String])
   meals?: string[];
@@ -69,11 +69,11 @@ const ItineraryDaySchema = SchemaFactory.createForClass(ItineraryDay);
 
 @Schema({ timestamps: true })
 export class Tour {
-  @Prop({ required: true })
-  title: string;
+  @Prop({ type: Object, required: true })
+  title: Record<string, string>;
 
-  @Prop({ required: true })
-  subtitle: string;
+  @Prop({ type: Object, required: true })
+  subtitle: Record<string, string>;
 
   @Prop({ required: true })
   imageUrl: string;
@@ -87,8 +87,8 @@ export class Tour {
   @Prop()
   originalPrice?: number;
 
-  @Prop({ required: true })
-  duration: string;
+  @Prop({ type: Object, required: true })
+  duration: Record<string, string>; // ahora traducible
 
   @Prop({ required: true })
   rating: number;
@@ -111,8 +111,8 @@ export class Tour {
   @Prop({ required: true, enum: PackageType })
   packageType: PackageType;
 
-  @Prop([String])
-  highlights: string[];
+  @Prop({ type: [Object] })
+  highlights: Record<string, string>[];
 
   @Prop()
   featured?: boolean;
@@ -123,17 +123,17 @@ export class Tour {
   @Prop({ type: [ItineraryDaySchema], default: [] })
   itinerary: ItineraryDay[];
 
-  @Prop([String])
-  includes?: string[];
+  @Prop({ type: [Object] })
+  includes?: Record<string, string>[];
 
-  @Prop([String])
-  notIncludes?: string[];
+  @Prop({ type: [Object] })
+  notIncludes?: Record<string, string>[];
 
-  @Prop([String])
-  toBring?: string[];
+  @Prop({ type: [Object] })
+  toBring?: Record<string, string>[];
 
-  @Prop([String])
-  conditions?: string[];
+  @Prop({ type: [Object] })
+  conditions?: Record<string, string>[];
 
   @Prop({ required: true, unique: true })
   slug: string;

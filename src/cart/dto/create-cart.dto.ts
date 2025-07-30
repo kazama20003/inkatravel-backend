@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsDateString,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -10,9 +11,18 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
+export enum CartItemType {
+  Tour = 'Tour',
+  Transport = 'TourTransport',
+}
+
 class CartItemDto {
+  @IsEnum(CartItemType)
+  productType: CartItemType;
+
   @IsNotEmpty()
-  tour: string; // el populate validará si es ObjectId
+  @IsString()
+  productId: string; // ID de Tour o TourTransport
 
   @IsDateString()
   startDate: string;

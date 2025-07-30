@@ -1,14 +1,19 @@
 import { Type } from 'class-transformer';
-import { IsOptional, IsPositive } from 'class-validator';
+import { IsIn, IsOptional, IsPositive, IsString } from 'class-validator';
 
 export class PaginationDto {
-  @IsPositive()
   @IsOptional()
   @Type(() => Number)
+  @IsPositive()
   page?: number = 1;
 
-  @IsPositive()
   @IsOptional()
   @Type(() => Number)
+  @IsPositive()
   limit?: number = 10;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['es', 'en', 'fr', 'de']) // ✅ Idiomas permitidos extendidos
+  lang?: string;
 }
