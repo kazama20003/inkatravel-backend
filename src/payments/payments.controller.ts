@@ -4,10 +4,11 @@ import {
   Body,
   InternalServerErrorException,
   BadRequestException,
+  Param,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-
+import { ApiParam } from '@nestjs/swagger';
 interface KrCallbackBody {
   'kr-answer': string;
   'kr-hash': string;
@@ -52,49 +53,41 @@ export class PaymentsController {
       orderDetails?: { orderId?: string };
       client?: { email?: string };
       amount?: number;
+      transactions?: { uuid: string }[];
     };
 
-    console.log('✅ Respuesta Izipay:', answer);
+    const transactionUuid = answer.transactions?.[0]?.uuid;
+    console.log('🆔 UUID de la transacción:', transactionUuid); // 👈 nuevo
 
     if (answer.orderStatus === 'PAID') {
       const orderId = answer.orderDetails?.orderId || answer.orderId;
       const clientEmail = answer.client?.email;
-      const adminEmail = 'fatekazama@gmail.com';
       const amount = answer.amount || 0;
 
-      try {
-        // 📧 Enviar correo al cliente si tiene email
-        if (clientEmail) {
-          await this.paymentsService.sendPaymentConfirmation(
-            clientEmail,
-            orderId!,
-            amount,
-          );
-          console.log(
-            '📧 Correo de confirmación enviado al cliente:',
-            clientEmail,
-          );
-        }
+      // 🧠 Guardar en base de datos
+      await this.paymentsService.savePaymentFromCallback(answer);
 
-        // 📧 Enviar correo al admin (tú)
+      // 📧 Enviar correos
+      if (clientEmail) {
         await this.paymentsService.sendPaymentConfirmation(
-          adminEmail,
+          clientEmail,
           orderId!,
           amount,
         );
-        console.log('📧 Correo de notificación enviado al admin:', adminEmail);
-      } catch (err) {
-        console.error('❌ Error al enviar correo:', err);
       }
+
+      await this.paymentsService.sendPaymentConfirmation(
+        'fatekazama@gmail.com',
+        orderId!,
+        amount,
+      );
 
       return {
         valid: true,
         status: answer.orderStatus,
         orderId,
-        clientEmail,
-        adminEmail,
-        message:
-          'Pago exitoso. Correos enviados al cliente y al administrador.',
+        transactionUuid: answer.transactions?.[0]?.uuid,
+        message: 'Pago exitoso. Correos enviados.',
       };
     }
 
@@ -114,5 +107,14 @@ export class PaymentsController {
       body.orderId,
       body.amount,
     );
+  }
+  @Post('capture/:uuid')
+  @ApiParam({
+    name: 'uuid',
+    type: String,
+    description: 'UUID de la transacción a capturar',
+  })
+  capture(@Param('uuid') uuid: string) {
+    return this.paymentsService.captureTransaction(uuid);
   }
 }

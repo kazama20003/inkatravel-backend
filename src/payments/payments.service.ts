@@ -8,12 +8,23 @@ import { ConfigService } from '@nestjs/config';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import axios from 'axios';
 import { MailerService } from '@nestjs-modules/mailer';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Payment, PaymentDocument } from './entities/payment.entity';
 interface AxiosErrorShape {
   response?: {
     data?: {
       message?: string;
     };
   };
+}
+interface IzipayCallbackAnswer {
+  transactions?: { uuid?: string }[];
+  orderDetails?: { orderId?: string };
+  orderId?: string;
+  orderStatus?: string;
+  amount?: number;
+  client?: { email?: string };
 }
 
 function isAxiosError(error: unknown): error is AxiosErrorShape {
@@ -36,6 +47,8 @@ export class PaymentsService {
   constructor(
     private configService: ConfigService,
     private readonly mailerService: MailerService,
+    @InjectModel(Payment.name)
+    private paymentModel: Model<PaymentDocument>,
   ) {
     this.username = this.getEnvOrThrow('IZIPAY_USERNAME');
     this.password = this.getEnvOrThrow('IZIPAY_PASSWORD');
@@ -110,6 +123,48 @@ export class PaymentsService {
       throw new InternalServerErrorException('Error desconocido');
     }
   }
+  async captureTransaction(uuid: string) {
+    const secretKey = this.configService.get<string>('IZIPAY_SECRET_KEY');
+    if (!secretKey) {
+      throw new InternalServerErrorException(
+        'Falta IZIPAY_SECRET_KEY en el .env',
+      );
+    }
+
+    const body = {
+      uuid: uuid,
+    };
+
+    const signature = crypto
+      .createHmac('sha256', secretKey)
+      .update(JSON.stringify(body))
+      .digest('base64');
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `V2-HMAC-SHA256, Signature=${signature}`,
+    };
+
+    try {
+      const response = await axios.post(
+        'https://api.micuentaweb.pe/api-payment/V4/Charge/Charge/capture',
+        body,
+        { headers },
+      );
+
+      return response.data;
+    } catch (error: unknown) {
+      if (isAxiosError(error)) {
+        console.error('Error capturando la transacción:', error.response?.data);
+      } else {
+        console.error('Error desconocido al capturar transacción:', error);
+      }
+
+      throw new InternalServerErrorException(
+        'Error al capturar la transacción',
+      );
+    }
+  }
 
   validateSignature(rawClientAnswer: string, hash: string): boolean {
     const calculatedHash = crypto
@@ -134,5 +189,18 @@ export class PaymentsService {
         amount,
       },
     });
+  }
+  async savePaymentFromCallback(answer: IzipayCallbackAnswer) {
+    const payment = new this.paymentModel({
+      uuid: answer.transactions?.[0]?.uuid,
+      orderId: answer.orderDetails?.orderId || answer.orderId,
+      status: answer.orderStatus,
+      amount: answer.amount ?? 0,
+      customerEmail: answer.client?.email,
+      currency: 'PEN',
+      fullAnswerRaw: answer,
+    });
+
+    await payment.save();
   }
 }
