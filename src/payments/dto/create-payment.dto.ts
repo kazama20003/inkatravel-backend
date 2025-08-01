@@ -70,8 +70,8 @@ export class CreatePaymentDto {
   @Type(() => PaymentFormDto)
   paymentForms: PaymentFormDto[];
 
-  @IsString()
-  formAction: string;
+  @IsIn(['PAID'])
+  formAction: 'PAID';
 
   @IsOptional()
   @IsString()
