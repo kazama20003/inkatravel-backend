@@ -184,4 +184,14 @@ export class OrdersService {
       data: { id: deleted._id },
     };
   }
+  async findByOrderId(orderId: string) {
+    const order = await this.orderModel
+      .findOne({ externalOrderId: orderId })
+      .populate('items.tour', 'title imageUrl price')
+      .populate('appliedOffer', 'title discountPercentage')
+      .populate('user', 'fullName email')
+      .exec();
+
+    return order;
+  }
 }

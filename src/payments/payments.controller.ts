@@ -9,6 +9,9 @@ import {
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { ApiParam } from '@nestjs/swagger';
+import { OrdersService } from 'src/orders/orders.service';
+import { OrderDocument } from 'src/orders/entities/order.entity';
+
 interface KrCallbackBody {
   'kr-answer': string;
   'kr-hash': string;
@@ -16,7 +19,10 @@ interface KrCallbackBody {
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly ordersService: OrdersService,
+  ) {}
 
   @Post('formtoken')
   async generateFormToken(@Body() dto: CreatePaymentDto) {
@@ -57,37 +63,71 @@ export class PaymentsController {
     };
 
     const transactionUuid = answer.transactions?.[0]?.uuid;
-    console.log('🆔 UUID de la transacción:', transactionUuid); // 👈 nuevo
+    const orderId = answer.orderDetails?.orderId || answer.orderId;
 
     if (answer.orderStatus === 'PAID') {
-      const orderId = answer.orderDetails?.orderId || answer.orderId;
-      const clientEmail = answer.client?.email;
-      const amount = answer.amount || 0;
+      if (!orderId) {
+        throw new BadRequestException('No se pudo recuperar el orderId.');
+      }
 
-      // 🧠 Guardar en base de datos
+      const clientEmail = answer.client?.email;
+      const amount = answer.amount ?? 0;
+
       await this.paymentsService.savePaymentFromCallback(answer);
 
-      // 📧 Enviar correos
       if (clientEmail) {
         await this.paymentsService.sendPaymentConfirmation(
           clientEmail,
-          orderId!,
+          orderId,
           amount,
         );
       }
 
       await this.paymentsService.sendPaymentConfirmation(
         'fatekazama@gmail.com',
-        orderId!,
+        orderId,
         amount,
       );
+
+      const pendingOrder: OrderDocument | null =
+        await this.ordersService.findByOrderId(orderId);
+
+      if (!pendingOrder) {
+        throw new InternalServerErrorException(
+          'Orden no encontrada con ese ID',
+        );
+      }
+
+      const response = await this.ordersService.create({
+        user: pendingOrder.user?.toString(),
+        items: pendingOrder.items.map((item) => ({
+          tour: item.tour.toString(),
+          startDate: item.startDate.toISOString(),
+          people: item.people,
+          pricePerPerson: item.pricePerPerson,
+          total: item.total,
+          notes: item.notes,
+        })),
+        totalPrice: amount,
+        paymentMethod: 'card',
+        notes: 'Orden generada desde callback Izipay',
+        discountCodeUsed: pendingOrder.discountCodeUsed,
+        customer: {
+          fullName: pendingOrder.customer.fullName,
+          email: pendingOrder.customer.email,
+          phone: pendingOrder.customer.phone,
+          nationality: pendingOrder.customer.nationality,
+        },
+      });
+
+      const createdOrder: OrderDocument = response.data;
 
       return {
         valid: true,
         status: answer.orderStatus,
-        orderId,
-        transactionUuid: answer.transactions?.[0]?.uuid,
-        message: 'Pago exitoso. Correos enviados.',
+        orderId: createdOrder._id,
+        transactionUuid,
+        message: 'Pago exitoso. Orden creada y correos enviados.',
       };
     }
 
@@ -108,6 +148,7 @@ export class PaymentsController {
       body.amount,
     );
   }
+
   @Post('capture/:uuid')
   @ApiParam({
     name: 'uuid',

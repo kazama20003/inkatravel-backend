@@ -35,11 +35,6 @@ export class CartController {
     return this.cartService.findAll(paginationDto, userId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.cartService.findOne(id);
-  }
-
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'))
   update(

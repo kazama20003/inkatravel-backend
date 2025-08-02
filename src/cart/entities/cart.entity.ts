@@ -8,7 +8,7 @@ export enum CartItemType {
   Transport = 'TourTransport',
 }
 
-@Schema()
+@Schema({ _id: false }) // Evita que cada CartItem tenga su propio _id si no es necesario
 export class CartItem {
   @Prop({ required: true, enum: CartItemType })
   productType: CartItemType;
@@ -19,17 +19,27 @@ export class CartItem {
   @Prop({ required: true })
   startDate: Date;
 
-  @Prop({ required: true })
+  @Prop({ required: true, min: 1 })
   people: number;
-
-  @Prop()
-  notes?: string;
 
   @Prop({ required: true })
   pricePerPerson: number;
 
   @Prop({ required: true })
   total: number;
+
+  @Prop()
+  notes?: string;
+
+  // ✅ Campos denormalizados
+  @Prop()
+  productTitle?: string;
+
+  @Prop()
+  productImageUrl?: string;
+
+  @Prop()
+  productSlug?: string;
 }
 
 const CartItemSchema = SchemaFactory.createForClass(CartItem);
@@ -42,7 +52,7 @@ export class Cart {
   @Prop({ type: [CartItemSchema], default: [] })
   items: CartItem[];
 
-  @Prop({ default: 0 })
+  @Prop({ required: true, default: 0 })
   totalPrice: number;
 
   @Prop({ default: false })

@@ -22,7 +22,7 @@ class CartItemDto {
 
   @IsNotEmpty()
   @IsString()
-  productId: string; // ID de Tour o TourTransport
+  productId: string;
 
   @IsDateString()
   startDate: string;
@@ -38,8 +38,21 @@ class CartItemDto {
   total: number;
 
   @IsOptional()
-  @IsNotEmpty()
+  @IsString()
   notes?: string;
+
+  // Campos denormalizados opcionales
+  @IsOptional()
+  @IsString()
+  productTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  productImageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  productSlug?: string;
 }
 
 export class CreateCartDto {
@@ -53,5 +66,6 @@ export class CreateCartDto {
   items: CartItemDto[];
 
   @IsNumber()
+  @Min(0)
   totalPrice: number;
 }

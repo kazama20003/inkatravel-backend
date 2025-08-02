@@ -20,55 +20,77 @@ export class CartService {
   async create(createCartDto: CreateCartDto) {
     const { items, userId, totalPrice } = createCartDto;
 
+    // 🔐 Verifica autenticación
     if (!userId) {
       throw new UnauthorizedException(
         'Debes estar autenticado para crear un carrito.',
       );
     }
 
-    if (!items || items.length === 0) {
+    // 📦 Verifica que haya al menos un item
+    if (!items || !Array.isArray(items) || items.length === 0) {
       throw new BadRequestException('El carrito no puede estar vacío.');
     }
 
-    // 🛠 Conversión segura y soporta Tour y TourTransport
-    const cartItems = items.map((item) => ({
-      productType: item.productType,
-      productId: new Types.ObjectId(item.productId),
-      startDate: new Date(item.startDate),
-      people: item.people,
-      pricePerPerson: item.pricePerPerson,
-      total: item.total,
-      notes: item.notes,
-    }));
+    // 🧼 Sanitiza y valida cada item
+    const cartItems = items.map((item, index) => {
+      if (!item.productId) {
+        throw new BadRequestException(
+          `Item #${index + 1} le falta 'productId'.`,
+        );
+      }
 
+      if (!item.productType) {
+        throw new BadRequestException(
+          `Item #${index + 1} le falta 'productType'.`,
+        );
+      }
+
+      return {
+        productType: item.productType,
+        productId: new Types.ObjectId(item.productId),
+        startDate: new Date(item.startDate),
+        people: item.people,
+        pricePerPerson: item.pricePerPerson,
+        total: item.total,
+        notes: item.notes,
+        productTitle: item.productTitle,
+        productImageUrl: item.productImageUrl,
+        productSlug: item.productSlug,
+      };
+    });
+
+    // 🔄 Verifica si ya existe un carrito no ordenado para este usuario
     const existingCart = await this.cartModel.findOne({
       userId,
       isOrdered: false,
     });
 
     if (existingCart) {
+      // 📥 Añade nuevos ítems al carrito existente
       existingCart.items.push(...cartItems);
       existingCart.totalPrice += totalPrice;
 
-      const updated = await existingCart.save();
+      const updatedCart = await existingCart.save();
 
       return {
         message: '🛒 Productos añadidos a tu carrito existente',
-        data: updated,
+        data: updatedCart,
       };
     }
 
+    // 🆕 Si no hay carrito, crea uno nuevo
     const newCart = new this.cartModel({
       userId,
       items: cartItems,
       totalPrice,
     });
 
-    const saved = await newCart.save();
+    const savedCart = await newCart.save();
 
     return {
       message: '🛒 Carrito creado correctamente',
-      data: saved,
+      data: savedCart,
     };
   }
 
@@ -78,12 +100,15 @@ export class CartService {
 
     const [carts, total] = await Promise.all([
       this.cartModel
-        .find({ userId }) // 👈 solo carritos del usuario autenticado
+        .find({ userId })
         .skip(skip)
         .limit(limit)
-        .populate('items.tour', 'title price slug imageUrl')
+        .populate({
+          path: 'items.productId',
+          select: 'title price slug imageUrl',
+        })
         .exec(),
-      this.cartModel.countDocuments({ userId }).exec(), // 👈 contar solo sus carritos
+      this.cartModel.countDocuments({ userId }).exec(),
     ]);
 
     return {
@@ -95,25 +120,6 @@ export class CartService {
         totalPages: Math.ceil(total / limit),
       },
       data: carts,
-    };
-  }
-
-  async findOne(id: string) {
-    if (!isValidObjectId(id)) {
-      throw new BadRequestException('ID inválido');
-    }
-
-    const cart = await this.cartModel
-      .findById(id)
-      .populate('items.tour', 'title price slug imageUrl');
-
-    if (!cart) {
-      throw new NotFoundException(`No se encontró el carrito con ID ${id}`);
-    }
-
-    return {
-      message: '🛍️ Carrito encontrado',
-      data: cart,
     };
   }
 
