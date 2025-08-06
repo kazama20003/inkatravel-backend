@@ -123,27 +123,14 @@ export class CartService {
     };
   }
 
-  async update(id: string, updateCartDto: UpdateCartDto, userId: string) {
-    if (!isValidObjectId(id)) {
-      throw new BadRequestException('ID inválido');
-    }
-
-    const cart = await this.cartModel.findById(id);
+  async update(updateCartDto: UpdateCartDto, userId: string) {
+    const cart = await this.cartModel.findOne({ userId });
 
     if (!cart) {
-      throw new NotFoundException(`No se encontró el carrito con ID ${id}`);
+      throw new NotFoundException(`No se encontró un carrito para el usuario`);
     }
 
-    // Verificar que el carrito pertenezca al usuario
-    if (cart.userId?.toString() !== userId) {
-      throw new UnauthorizedException(
-        'No tienes permiso para editar este carrito.',
-      );
-    }
-
-    // ✅ Si se va a actualizar el array de items
     if (updateCartDto.items) {
-      // Validamos cada item (esto se recomienda pero es opcional si ya pasaron DTO)
       for (const item of updateCartDto.items) {
         if (
           !item.productId ||
@@ -155,16 +142,19 @@ export class CartService {
         }
       }
 
-      // Recalcular totalPrice automáticamente si modifican items
       updateCartDto.totalPrice = updateCartDto.items.reduce(
         (sum, item) => sum + item.total,
         0,
       );
     }
 
-    const updated = await this.cartModel.findByIdAndUpdate(id, updateCartDto, {
-      new: true,
-    });
+    const updated = await this.cartModel.findByIdAndUpdate(
+      cart._id,
+      updateCartDto,
+      {
+        new: true,
+      },
+    );
 
     return {
       message: '📝 Carrito actualizado correctamente',
@@ -172,22 +162,11 @@ export class CartService {
     };
   }
 
-  async remove(id: string, userId: string) {
-    if (!isValidObjectId(id)) {
-      throw new BadRequestException('ID inválido');
-    }
-
-    const cart = await this.cartModel.findById(id);
+  async remove(userId: string) {
+    const cart = await this.cartModel.findOne({ userId });
 
     if (!cart) {
-      throw new NotFoundException(`No se encontró el carrito con ID ${id}`);
-    }
-
-    // 🛡️ Verificación de dueño
-    if (cart.userId?.toString() !== userId) {
-      throw new UnauthorizedException(
-        'No tienes permiso para eliminar este carrito.',
-      );
+      throw new NotFoundException(`No se encontró un carrito para el usuario`);
     }
 
     await cart.deleteOne();
@@ -197,6 +176,7 @@ export class CartService {
       data: { id: cart._id },
     };
   }
+
   async removeItemFromCart(cartId: string, userId: string, productId: string) {
     if (!isValidObjectId(cartId) || !isValidObjectId(productId)) {
       throw new BadRequestException('ID inválido');

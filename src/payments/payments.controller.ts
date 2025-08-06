@@ -42,12 +42,15 @@ export class PaymentsController {
     const hash = body['kr-hash'];
 
     if (!rawAnswer || !hash) {
+      console.error('❌ Faltan datos en el callback');
       throw new BadRequestException(
         'Faltan datos en el callback (kr-answer o kr-hash).',
       );
     }
 
     const isValid = this.paymentsService.validateSignature(rawAnswer, hash);
+
+    console.log('🔐 Firma válida:', isValid);
 
     if (!isValid) {
       return { valid: false, message: 'Firma inválida' };
@@ -62,18 +65,28 @@ export class PaymentsController {
       transactions?: { uuid: string }[];
     };
 
+    console.log('📦 Respuesta de Izipay:', answer);
+
     const transactionUuid = answer.transactions?.[0]?.uuid;
     const orderId = answer.orderDetails?.orderId || answer.orderId;
 
+    console.log('🆔 OrderId recibido:', orderId);
+    console.log('💳 Estado de pago:', answer.orderStatus);
+
     if (answer.orderStatus === 'PAID') {
       if (!orderId) {
+        console.error('❌ No se recibió orderId en el callback');
         throw new BadRequestException('No se pudo recuperar el orderId.');
       }
 
       const clientEmail = answer.client?.email;
       const amount = answer.amount ?? 0;
 
+      console.log('💰 Monto pagado:', amount);
+      console.log('📨 Email del cliente:', clientEmail);
+
       await this.paymentsService.savePaymentFromCallback(answer);
+      console.log('✅ Pago guardado en base de datos');
 
       if (clientEmail) {
         await this.paymentsService.sendPaymentConfirmation(
@@ -81,6 +94,7 @@ export class PaymentsController {
           orderId,
           amount,
         );
+        console.log('📧 Correo de confirmación enviado al cliente');
       }
 
       await this.paymentsService.sendPaymentConfirmation(
@@ -88,15 +102,21 @@ export class PaymentsController {
         orderId,
         amount,
       );
+      console.log('📧 Correo de copia enviado a fatekazama');
+
+      console.log('🔎 Buscando orden pendiente con ID:', orderId);
 
       const pendingOrder: OrderDocument | null =
         await this.ordersService.findByOrderId(orderId);
 
       if (!pendingOrder) {
+        console.error('❌ No se encontró una orden pendiente con ese orderId');
         throw new InternalServerErrorException(
           'Orden no encontrada con ese ID',
         );
       }
+
+      console.log('📦 Orden pendiente encontrada:', pendingOrder);
 
       const response = await this.ordersService.create({
         user: pendingOrder.user?.toString(),
@@ -121,6 +141,7 @@ export class PaymentsController {
       });
 
       const createdOrder: OrderDocument = response.data;
+      console.log('✅ Orden creada correctamente:', createdOrder);
 
       return {
         valid: true,
@@ -130,6 +151,8 @@ export class PaymentsController {
         message: 'Pago exitoso. Orden creada y correos enviados.',
       };
     }
+
+    console.warn('⚠️ El pago no fue completado:', answer.orderStatus);
 
     return {
       valid: true,

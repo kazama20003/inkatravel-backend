@@ -35,22 +35,18 @@ export class CartController {
     return this.cartService.findAll(paginationDto, userId);
   }
 
-  @Patch(':id')
+  @Patch()
   @UseGuards(AuthGuard('jwt'))
-  update(
-    @Param('id') id: string,
-    @Body() updateCartDto: UpdateCartDto,
-    @Req() req: RequestWithUser,
-  ) {
+  update(@Body() updateCartDto: UpdateCartDto, @Req() req: RequestWithUser) {
     const userId = req.user.userId;
-    return this.cartService.update(id, updateCartDto, userId);
+    return this.cartService.update(updateCartDto, userId); // ✅ Solo se pasa userId
   }
 
-  @Delete(':id')
+  @Delete()
   @UseGuards(AuthGuard('jwt'))
-  remove(@Param('id') id: string, @Req() req: RequestWithUser) {
+  remove(@Req() req: RequestWithUser) {
     const userId = req.user.userId;
-    return this.cartService.remove(id, userId);
+    return this.cartService.remove(userId); // ✅ Solo se pasa userId
   }
 
   @Delete(':cartId/items/:tourId')
