@@ -49,16 +49,16 @@ export class CartController {
     return this.cartService.remove(userId); // ✅ Solo se pasa userId
   }
 
-  @Delete(':cartId/items/:tourId')
+  @Delete('items/:itemId')
   @UseGuards(AuthGuard('jwt'))
   async removeItem(
-    @Param('cartId') cartId: string,
-    @Param('tourId') tourId: string,
+    @Param('itemId') itemId: string,
     @Req() req: RequestWithUser,
   ) {
     const userId = req.user.userId;
-    return await this.cartService.removeItemFromCart(cartId, userId, tourId);
+    return await this.cartService.removeItemByUser(userId, itemId);
   }
+
   @Patch('items/:tourId')
   @UseGuards(AuthGuard('jwt'))
   async updateItem(

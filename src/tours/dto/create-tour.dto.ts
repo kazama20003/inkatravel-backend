@@ -172,4 +172,8 @@ export class CreateTourDto {
 
   @IsString()
   slug: string;
+
+  /* 👇 Nuevo campo obligatorio */
+  @IsString()
+  startTime: string; // Ejemplo: "08:00 AM" o formato "HH:mm"
 }

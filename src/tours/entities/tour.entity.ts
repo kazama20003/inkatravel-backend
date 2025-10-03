@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { TranslatedTextDto } from 'src/common/dto/translated-text.dto';
 
 export type TourDocument = Tour & Document;
 
@@ -19,12 +20,12 @@ export enum PackageType {
 }
 
 @Schema()
-class RoutePoint {
-  @Prop({ type: Object, required: true })
-  location: Record<string, string>;
+export class RoutePoint {
+  @Prop({ type: TranslatedTextDto, required: true })
+  location: TranslatedTextDto;
 
-  @Prop({ type: Object })
-  description?: Record<string, string>;
+  @Prop({ type: TranslatedTextDto })
+  description?: TranslatedTextDto;
 
   @Prop()
   imageId?: string;
@@ -32,22 +33,21 @@ class RoutePoint {
   @Prop()
   imageUrl?: string;
 }
-
 const RoutePointSchema = SchemaFactory.createForClass(RoutePoint);
 
 @Schema()
-class ItineraryDay {
+export class ItineraryDay {
   @Prop({ required: true })
   day: number;
 
-  @Prop({ type: Object, required: true })
-  title: Record<string, string>;
+  @Prop({ type: TranslatedTextDto, required: true })
+  title: TranslatedTextDto;
 
-  @Prop({ type: Object, required: true })
-  description: Record<string, string>;
+  @Prop({ type: TranslatedTextDto, required: true })
+  description: TranslatedTextDto;
 
-  @Prop({ type: [Object], default: [] })
-  activities: Record<string, string>[]; // ✅ Ahora multilenguaje
+  @Prop({ type: [TranslatedTextDto], default: [] })
+  activities: TranslatedTextDto[];
 
   @Prop([String])
   meals?: string[];
@@ -64,16 +64,15 @@ class ItineraryDay {
   @Prop({ type: [RoutePointSchema], default: [] })
   route: RoutePoint[];
 }
-
 const ItineraryDaySchema = SchemaFactory.createForClass(ItineraryDay);
 
 @Schema({ timestamps: true })
 export class Tour {
-  @Prop({ type: Object, required: true })
-  title: Record<string, string>;
+  @Prop({ type: TranslatedTextDto, required: true })
+  title: TranslatedTextDto;
 
-  @Prop({ type: Object, required: true })
-  subtitle: Record<string, string>;
+  @Prop({ type: TranslatedTextDto, required: true })
+  subtitle: TranslatedTextDto;
 
   @Prop({ required: true })
   imageUrl: string;
@@ -87,8 +86,8 @@ export class Tour {
   @Prop()
   originalPrice?: number;
 
-  @Prop({ type: Object, required: true })
-  duration: Record<string, string>; // ahora traducible
+  @Prop({ type: TranslatedTextDto, required: true })
+  duration: TranslatedTextDto;
 
   @Prop({ required: true })
   rating: number;
@@ -111,8 +110,8 @@ export class Tour {
   @Prop({ required: true, enum: PackageType })
   packageType: PackageType;
 
-  @Prop({ type: [Object] })
-  highlights: Record<string, string>[];
+  @Prop({ type: [TranslatedTextDto] })
+  highlights: TranslatedTextDto[];
 
   @Prop()
   featured?: boolean;
@@ -123,20 +122,23 @@ export class Tour {
   @Prop({ type: [ItineraryDaySchema], default: [] })
   itinerary: ItineraryDay[];
 
-  @Prop({ type: [Object] })
-  includes?: Record<string, string>[];
+  @Prop({ type: [TranslatedTextDto] })
+  includes?: TranslatedTextDto[];
 
-  @Prop({ type: [Object] })
-  notIncludes?: Record<string, string>[];
+  @Prop({ type: [TranslatedTextDto] })
+  notIncludes?: TranslatedTextDto[];
 
-  @Prop({ type: [Object] })
-  toBring?: Record<string, string>[];
+  @Prop({ type: [TranslatedTextDto] })
+  toBring?: TranslatedTextDto[];
 
-  @Prop({ type: [Object] })
-  conditions?: Record<string, string>[];
+  @Prop({ type: [TranslatedTextDto] })
+  conditions?: TranslatedTextDto[];
 
   @Prop({ required: true, unique: true })
   slug: string;
+
+  @Prop({ required: true })
+  startTime: string; // Ejemplo: "08:00 AM"
 }
 
 export const TourSchema = SchemaFactory.createForClass(Tour);

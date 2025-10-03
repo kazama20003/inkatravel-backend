@@ -33,6 +33,23 @@ export class TourTransportController {
     const pagination: PaginationDto = { page, limit, lang };
     return await this.tourTransportService.findAll(pagination);
   }
+  @Get('all/:id')
+  async findOneAll(@Param('id') id: string) {
+    return await this.tourTransportService.findOneAll(id);
+  }
+
+  @Get('featured')
+  async findFeatured(@Query('lang', new DefaultValuePipe('')) lang: string) {
+    return await this.tourTransportService.findFeatured(lang);
+  }
+
+  @Get('slug/:slug')
+  async findBySlug(
+    @Param('slug') slug: string,
+    @Query('lang', new DefaultValuePipe('')) lang: string,
+  ) {
+    return await this.tourTransportService.findBySlug(slug, lang);
+  }
 
   @Get(':id')
   async findOne(

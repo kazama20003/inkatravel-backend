@@ -10,15 +10,17 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TranslatedTextDto } from 'src/common/dto/translated-text.dto';
+import { GeoLocationDto } from 'src/common/dto/geoLocation.dto';
 
+/* ---------- Subdocs ---------- */
 export class RouteStopDto {
   @ValidateNested()
-  @Type(() => TranslatedTextDto)
-  location: TranslatedTextDto;
+  @Type(() => GeoLocationDto)
+  location: GeoLocationDto; // ✅ requerido
 
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  description: TranslatedTextDto;
+  description: TranslatedTextDto; // ✅ requerido
 
   @IsOptional()
   @IsString()
@@ -39,19 +41,17 @@ export class ItineraryDayDto {
 
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  title: TranslatedTextDto;
+  title: TranslatedTextDto; // ✅ requerido
 
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  description: TranslatedTextDto;
+  description: TranslatedTextDto; // ✅ requerido
 
-  @IsOptional()
   @IsString()
-  imageUrl?: string;
+  imageUrl: string; // ✅ requerido
 
-  @IsOptional()
   @IsString()
-  imageId?: string;
+  imageId: string; // ✅ requerido
 
   @IsOptional()
   @IsArray()
@@ -60,29 +60,33 @@ export class ItineraryDayDto {
   route?: RouteStopDto[];
 }
 
+/* ---------- Main DTO ---------- */
 export class CreateTourTransportDto {
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  title: TranslatedTextDto;
+  title: TranslatedTextDto; // ✅ requerido
 
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  description: TranslatedTextDto;
+  description: TranslatedTextDto; // ✅ requerido
 
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  termsAndConditions: TranslatedTextDto;
+  termsAndConditions: TranslatedTextDto; // ✅ requerido
 
-  @IsString()
-  originCity: string;
+  @ValidateNested()
+  @Type(() => GeoLocationDto)
+  origin: GeoLocationDto; // ✅ requerido
 
-  @IsString()
-  destinationCity: string;
+  @ValidateNested()
+  @Type(() => GeoLocationDto)
+  destination: GeoLocationDto; // ✅ requerido
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  intermediateStops?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => GeoLocationDto)
+  intermediateStops?: GeoLocationDto[];
 
   @IsArray()
   @IsEnum(
@@ -97,7 +101,7 @@ export class CreateTourTransportDto {
     ],
     { each: true },
   )
-  availableDays: string[];
+  availableDays: string[]; // ✅ requerido
 
   @IsOptional()
   @IsString()
@@ -113,10 +117,10 @@ export class CreateTourTransportDto {
 
   @IsOptional()
   @IsString()
-  duration?: string; // Ej: "6 Horas"
+  duration?: string; // Ej: "6h"
 
   @IsNumber()
-  price: number;
+  price: number; // ✅ requerido
 
   @IsOptional()
   @IsNumber()
@@ -151,4 +155,8 @@ export class CreateTourTransportDto {
   @IsOptional()
   @IsString()
   imageId?: string;
+  // 👇 Nuevo campo
+  @IsBoolean()
+  @IsOptional()
+  isFeatured?: boolean;
 }

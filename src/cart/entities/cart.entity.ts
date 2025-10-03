@@ -8,7 +8,7 @@ export enum CartItemType {
   Transport = 'TourTransport',
 }
 
-@Schema({ _id: false }) // Evita que cada CartItem tenga su propio _id si no es necesario
+@Schema() // Evita que cada CartItem tenga su propio _id si no es necesario
 export class CartItem {
   @Prop({ required: true, enum: CartItemType })
   productType: CartItemType;

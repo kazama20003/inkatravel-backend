@@ -3,7 +3,6 @@
 import {
   IsArray,
   IsEmail,
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -34,22 +33,58 @@ class OrderItemDto {
   @IsString()
   notes?: string;
 }
-
-class CustomerInfoDto {
-  @IsString()
-  @IsNotEmpty()
-  fullName: string;
-
+export class CustomerInfoDto {
   @IsEmail()
   email: string;
 
   @IsOptional()
   @IsString()
-  phone?: string;
+  firstName?: string;
 
   @IsOptional()
   @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  identityType?: string;
+
+  @IsOptional()
+  @IsString()
+  identityCode?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @IsOptional()
+  @IsString()
+  zipCode?: string;
+
+  // si quieres mantener compatibilidad
+  @IsOptional()
+  @IsString()
   nationality?: string;
+
+  @IsOptional()
+  @IsString()
+  fullName?: string;
 }
 
 export class CreateOrderDto {

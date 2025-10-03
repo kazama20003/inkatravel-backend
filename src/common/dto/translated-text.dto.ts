@@ -16,4 +16,8 @@ export class TranslatedTextDto {
   @IsOptional()
   @IsString()
   de?: string;
+
+  @IsOptional()
+  @IsString()
+  it?: string; // Italiano
 }

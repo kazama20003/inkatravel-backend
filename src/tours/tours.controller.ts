@@ -27,6 +27,7 @@ import { TourCategory } from './entities/tour.entity';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
+import { TranslatedTextDto } from 'src/common/dto/translated-text.dto';
 @ApiTags('Tours') // 🏷 Agrupa los endpoints bajo la etiqueta 'Tours'
 @Controller('tours')
 export class ToursController {
@@ -65,6 +66,19 @@ export class ToursController {
     return this.toursService.findAll(query); // ✅ Solo un argumento
   }
 
+  // 🚀 Nuevo endpoint sin paginación ni lang
+  @Get('all')
+  @ApiOperation({
+    summary: 'Obtener todos los tours completos (sin lang, sin paginación)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de todos los tours obtenida correctamente.',
+  })
+  findAllToursAll() {
+    return this.toursService.findAllToursAll();
+  }
+
   @Get('ids/title')
   @ApiOperation({ summary: 'Obtener solo los IDs y títulos de tours' })
   @ApiResponse({ status: 200, description: 'Lista de IDs y títulos.' })
@@ -72,13 +86,8 @@ export class ToursController {
     return this.toursService.getTourIds();
   }
   @Get('top')
-  @ApiOperation({ summary: 'Obtener los 10 tours con más reviews' })
-  @ApiResponse({
-    status: 200,
-    description: 'Top 10 tours obtenidos correctamente.',
-  })
-  getTopTours() {
-    return this.toursService.getTopTours();
+  async getTopTours(@Query('lang') lang: keyof TranslatedTextDto = 'es') {
+    return this.toursService.getTopTours(lang);
   }
 
   @Get('slug/:slug')
@@ -108,6 +117,17 @@ export class ToursController {
   @ApiResponse({ status: 404, description: 'Tour no encontrado.' })
   findOne(@Param('id') id: string) {
     return this.toursService.findOne(id);
+  }
+  @Get('all/:id')
+  @ApiOperation({ summary: 'Obtener un tour completo por ID (sin lang)' })
+  @ApiParam({ name: 'id', description: 'ID del tour', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Tour completo obtenido correctamente.',
+  })
+  @ApiResponse({ status: 404, description: 'Tour no encontrado.' })
+  findOneTourAll(@Param('id') id: string) {
+    return this.toursService.findOneTourAll(id);
   }
 
   @Patch(':id')

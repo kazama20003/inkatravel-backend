@@ -7,10 +7,10 @@ import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import axios from 'axios';
-import { MailerService } from '@nestjs-modules/mailer';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Payment, PaymentDocument } from './entities/payment.entity';
+
 interface AxiosErrorShape {
   response?: {
     data?: {
@@ -18,6 +18,7 @@ interface AxiosErrorShape {
     };
   };
 }
+
 interface IzipayCallbackAnswer {
   transactions?: { uuid?: string }[];
   orderDetails?: { orderId?: string };
@@ -43,10 +44,11 @@ export class PaymentsService {
   private publicKey: string;
   private hmacKey: string;
   private baseUrl: string;
+  private brevoApiKey: string;
+  private brevoFrom: string;
 
   constructor(
     private configService: ConfigService,
-    private readonly mailerService: MailerService,
     @InjectModel(Payment.name)
     private paymentModel: Model<PaymentDocument>,
   ) {
@@ -55,6 +57,8 @@ export class PaymentsService {
     this.hmacKey = this.getEnvOrThrow('IZIPAY_HMACSHA256');
     this.publicKey = this.getEnvOrThrow('IZIPAY_PUBLIC_KEY');
     this.baseUrl = this.getEnvOrThrow('IZIPAY_BASE_URL');
+    this.brevoApiKey = this.getEnvOrThrow('BREVO_API_KEY');
+    this.brevoFrom = this.getEnvOrThrow('MAIL_FROM');
   }
 
   private getEnvOrThrow(key: string): string {
@@ -69,28 +73,26 @@ export class PaymentsService {
     }
 
     const body = {
-      amount: dto.amount,
+      amount: dto.amount * 100,
       currency: dto.currency || 'PEN',
-      action: 'PAYMENT',
-      mode: 'SINGLE',
-      contractNumber: 'IZI-PERU-001',
-      order: {
-        orderId: dto.orderId,
-      },
-      buyer: {
-        email: dto.customer.email,
-      },
+      orderId: dto.orderId,
       customer: {
         email: dto.customer.email,
+        billingDetails: {
+          firstName: dto.customer.firstName || 'N/A',
+          lastName: dto.customer.lastName || 'N/A',
+          phoneNumber: dto.customer.phoneNumber || '',
+          identityType: dto.customer.identityType || '',
+          identityCode: dto.customer.identityCode || '',
+          address: dto.customer.address || '',
+          country: dto.customer.country || 'PE',
+          city: dto.customer.city || '',
+          state: dto.customer.state || '',
+          zipCode: dto.customer.zipCode || '',
+        },
       },
       contextMode: dto.contextMode || 'TEST',
     };
-
-    const jsonBody = JSON.stringify(body);
-    const digest = crypto
-      .createHmac('sha256', this.hmacKey)
-      .update(jsonBody)
-      .digest('base64');
 
     try {
       const response = await axios.post(
@@ -104,7 +106,6 @@ export class PaymentsService {
               Buffer.from(`${this.username}:${this.password}`).toString(
                 'base64',
               ),
-            'X-Salt': digest,
           },
         },
       );
@@ -123,6 +124,7 @@ export class PaymentsService {
       throw new InternalServerErrorException('Error desconocido');
     }
   }
+
   async captureTransaction(uuid: string) {
     const secretKey = this.configService.get<string>('IZIPAY_SECRET_KEY');
     if (!secretKey) {
@@ -131,9 +133,7 @@ export class PaymentsService {
       );
     }
 
-    const body = {
-      uuid: uuid,
-    };
+    const body = { uuid };
 
     const signature = crypto
       .createHmac('sha256', secretKey)
@@ -147,7 +147,7 @@ export class PaymentsService {
 
     try {
       const response = await axios.post(
-        'https://api.micuentaweb.pe/api-payment/V4/Charge/Charge/capture',
+        `${this.baseUrl}/V4/Charge/Capture`,
         body,
         { headers },
       );
@@ -159,7 +159,6 @@ export class PaymentsService {
       } else {
         console.error('Error desconocido al capturar transacción:', error);
       }
-
       throw new InternalServerErrorException(
         'Error al capturar la transacción',
       );
@@ -170,26 +169,48 @@ export class PaymentsService {
     const calculatedHash = crypto
       .createHmac('sha256', this.hmacKey)
       .update(rawClientAnswer)
-      .digest('base64');
+      .digest('hex');
 
     return calculatedHash === hash;
   }
+
   async sendPaymentConfirmation(
     email: string,
     orderId: string,
     amount: number,
   ) {
-    await this.mailerService.sendMail({
-      to: email,
-      subject: 'Confirmación de pago',
-      template: './confirmation', // sin extensión, debe existir `templates/confirmation.hbs`
-      context: {
-        email,
-        orderId,
-        amount,
-      },
-    });
+    try {
+      await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: { email: this.brevoFrom, name: 'Inca Travel Peru' },
+          to: [{ email }],
+          subject: 'Confirmación de pago',
+          htmlContent: `
+            <h2>Confirmación de pago</h2>
+            <p>Hola,</p>
+            <p>Tu pago fue procesado correctamente.</p>
+            <p><strong>Pedido:</strong> ${orderId}</p>
+            <p><strong>Monto:</strong> S/ ${(amount / 100).toFixed(2)}</p>
+            <br/>
+            <p>Gracias por confiar en nosotros.</p>
+          `,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': this.brevoApiKey,
+          },
+        },
+      );
+    } catch (error) {
+      console.error('Error enviando correo con Brevo:', error);
+      throw new InternalServerErrorException(
+        'No se pudo enviar la confirmación de pago',
+      );
+    }
   }
+
   async savePaymentFromCallback(answer: IzipayCallbackAnswer) {
     const payment = new this.paymentModel({
       uuid: answer.transactions?.[0]?.uuid,

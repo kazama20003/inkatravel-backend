@@ -28,11 +28,11 @@ export class TourTransportService {
     const { page = 1, limit = 10, lang = '' } = paginationDto;
     const skip = (page - 1) * limit;
 
-    // Obtener documentos sin tipado any
     const items = (await this.tourTransportModel
       .find()
       .skip(skip)
       .limit(limit)
+      .sort({ createdAt: -1 })
       .lean()
       .exec()) as TourTransport[];
     const total = await this.tourTransportModel.countDocuments().exec();
@@ -78,6 +78,56 @@ export class TourTransportService {
     if (!result) {
       throw new NotFoundException(`TourTransport with id ${id} not found`);
     }
+  }
+
+  /**
+   * Obtener transportes destacados (máximo 10 últimos creados)
+   */
+  async findFeatured(lang = ''): Promise<Partial<TourTransport>[]> {
+    const featured = (await this.tourTransportModel
+      .find({ isFeatured: true })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean()
+      .exec()) as TourTransport[];
+
+    return featured.map((doc) => this.projectByLang(doc, lang));
+  }
+
+  async findBySlug(slug: string, lang = ''): Promise<Partial<TourTransport>> {
+    let doc: TourTransport | null = null;
+
+    if (lang) {
+      // intenta buscar slug multilenguaje (ej: slug.de)
+      doc = await this.tourTransportModel
+        .findOne({ [`slug.${lang}`]: slug })
+        .lean()
+        .exec();
+    }
+
+    // si no encuentra nada, intenta como string plano
+    if (!doc) {
+      doc = await this.tourTransportModel.findOne({ slug }).lean().exec();
+    }
+
+    if (!doc) {
+      throw new NotFoundException(
+        `TourTransport with slug "${slug}" not found`,
+      );
+    }
+
+    return this.projectByLang(doc, lang);
+  }
+
+  async findOneAll(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException(`TourTransport with id ${id} not found`);
+    }
+    const doc = await this.tourTransportModel.findById(id).lean().exec();
+    if (!doc) {
+      throw new NotFoundException(`TourTransport with id ${id} not found`);
+    }
+    return doc; // 👈 aquí devolvemos todo sin aplicar projectByLang
   }
 
   /**

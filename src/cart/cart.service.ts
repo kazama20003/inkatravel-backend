@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId, Types } from 'mongoose';
-import { Cart, CartDocument } from './entities/cart.entity';
+import { Cart, CartDocument, CartItem } from './entities/cart.entity';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
@@ -177,36 +177,36 @@ export class CartService {
     };
   }
 
-  async removeItemFromCart(cartId: string, userId: string, productId: string) {
-    if (!isValidObjectId(cartId) || !isValidObjectId(productId)) {
-      throw new BadRequestException('ID inválido');
-    }
+  async removeItemByUser(userId: string, itemId: string) {
+    // Buscar carrito activo del usuario
+    const cart = await this.cartModel.findOne({ userId, isOrdered: false });
 
-    const cart = await this.cartModel.findById(cartId);
     if (!cart) {
-      throw new NotFoundException(`No se encontró el carrito con ID ${cartId}`);
+      throw new NotFoundException(
+        'No se encontró un carrito activo para el usuario',
+      );
     }
 
-    if (cart.userId?.toString() !== userId) {
-      throw new UnauthorizedException('No tienes acceso a este carrito');
+    // ✅ Asegurar que items se trate como DocumentArray<CartItem>
+    const items = cart.items as (CartItem & { _id: Types.ObjectId })[];
+
+    // Buscar el item por _id
+    const index = items.findIndex((item) => item._id.toString() === itemId);
+
+    if (index === -1) {
+      throw new NotFoundException('El ítem no se encontró en el carrito');
     }
 
-    const originalLength = cart.items.length;
+    // Eliminar el ítem específico
+    items.splice(index, 1);
 
-    cart.items = cart.items.filter(
-      (item) => item.productId.toString() !== productId,
-    );
-
-    if (cart.items.length === originalLength) {
-      throw new NotFoundException('El producto no se encontró en el carrito');
-    }
-
-    cart.totalPrice = cart.items.reduce((sum, i) => sum + i.total, 0);
+    // Recalcular el total
+    cart.totalPrice = items.reduce((sum, i) => sum + i.total, 0);
 
     const saved = await cart.save();
 
     return {
-      message: '🗑️ Producto eliminado del carrito',
+      message: '🗑️ Ítem eliminado del carrito',
       data: saved,
     };
   }

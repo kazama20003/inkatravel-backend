@@ -1,7 +1,8 @@
-import { CreateOrderDto } from 'src/orders/dto/create-order.dto';
-import { IsString, IsIn, IsOptional, IsNumber } from 'class-validator';
-
-export class CreatePaymentDto extends CreateOrderDto {
+import { IsNumber } from 'class-validator';
+import { IsString, IsIn, IsOptional, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CustomerInfoDto } from 'src/orders/dto/create-order.dto';
+export class CreatePaymentDto {
   @IsNumber()
   amount: number;
 
@@ -17,4 +18,8 @@ export class CreatePaymentDto extends CreateOrderDto {
   @IsOptional()
   @IsString()
   contextMode?: 'TEST' | 'PRODUCTION';
+
+  @ValidateNested()
+  @Type(() => CustomerInfoDto)
+  customer: CustomerInfoDto;
 }
