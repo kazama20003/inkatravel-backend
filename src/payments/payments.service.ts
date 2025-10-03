@@ -91,7 +91,7 @@ export class PaymentsService {
           zipCode: dto.customer.zipCode || '',
         },
       },
-      contextMode: dto.contextMode || 'TEST',
+      contextMode: dto.contextMode || 'LIVE',
     };
 
     try {
