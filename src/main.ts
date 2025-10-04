@@ -5,6 +5,12 @@ import { envs } from './config/envs';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as compression from 'compression';
+import * as bodyParser from 'body-parser'; // <- Importar body-parser
+import { Request } from 'express';
+
+interface RawBodyRequest extends Request {
+  rawBody?: Buffer;
+}
 
 async function bootstrap() {
   const logger = new Logger('Main');
@@ -38,6 +44,24 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+    }),
+  );
+
+  // 🔹 Capturar rawBody antes de que body-parser transforme el JSON
+  app.use(
+    bodyParser.json({
+      verify: (req: RawBodyRequest, res, buf: Buffer) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
+
+  app.use(
+    bodyParser.urlencoded({
+      extended: true,
+      verify: (req: RawBodyRequest, res, buf: Buffer) => {
+        req.rawBody = buf;
+      },
     }),
   );
 

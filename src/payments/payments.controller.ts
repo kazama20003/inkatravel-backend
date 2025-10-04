@@ -5,27 +5,46 @@ import {
   InternalServerErrorException,
   BadRequestException,
   Param,
+  Res,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { ApiParam } from '@nestjs/swagger';
 import { OrdersService } from 'src/orders/orders.service';
-import { OrderDocument } from 'src/orders/entities/order.entity';
+import { Response } from 'express';
 
-// Estructura del body que envía Izipay
-interface KrCallbackBody {
-  'kr-answer': string;
-  'kr-hash': string;
+type CallbackBody = Record<string, unknown>;
+
+/** Shape expected after parsing kr-answer (básico) */
+interface IzipayTransaction {
+  uuid?: string;
+}
+interface IzipayAnswer {
+  orderStatus?: string;
+  orderId?: string;
+  orderDetails?: { orderId?: string; orderPaidAmount?: number };
+  customer?: { email?: string };
+  transactions?: IzipayTransaction[];
 }
 
-// Estructura de la respuesta decodificada de Izipay
-interface IzipayAnswer {
-  orderStatus: string;
-  orderId?: string;
-  orderDetails?: { orderId?: string };
-  client?: { email?: string };
-  amount?: number;
-  transactions?: { uuid: string }[];
+export interface FormTokenResponse {
+  formToken: string;
+  [key: string]: unknown;
+}
+
+/** runtime validator para la respuesta parseada */
+function isIzipayAnswer(u: unknown): u is IzipayAnswer {
+  if (typeof u !== 'object' || u === null) return false;
+  const o = u as Record<string, unknown>;
+  if ('orderStatus' in o && typeof o['orderStatus'] === 'string') return true;
+  if (
+    'orderDetails' in o &&
+    typeof o['orderDetails'] === 'object' &&
+    o['orderDetails'] !== null
+  )
+    return true;
+  if ('orderId' in o && typeof o['orderId'] === 'string') return true;
+  return false;
 }
 
 @Controller('payments')
@@ -35,161 +54,205 @@ export class PaymentsController {
     private readonly ordersService: OrdersService,
   ) {}
 
-  @Post('formtoken')
-  async generateFormToken(@Body() dto: CreatePaymentDto) {
-    try {
-      return await this.paymentsService.generateFormToken(dto);
-    } catch (error) {
-      console.error('❌ Error al generar formtoken:', error);
-      throw new InternalServerErrorException('No se pudo generar el formToken');
-    }
-  }
-
+  // ----------------- FRONT CALLBACK -----------------
   @Post('callback')
-  async handlePaymentCallback(@Body() body: KrCallbackBody) {
-    console.log('🔔 Callback recibido:', body);
-
+  async handlePaymentCallback(@Body() body: CallbackBody) {
     try {
-      const rawAnswer = body['kr-answer'];
-      const hash = body['kr-hash'];
+      console.log('⚡ Callback recibido (front)');
 
-      if (!rawAnswer || !hash) {
-        console.error('❌ Faltan datos en el callback');
+      const rawAnswer = body['kr-answer'];
+      const krHash = body['kr-hash'];
+
+      if (typeof rawAnswer !== 'string' || typeof krHash !== 'string') {
         throw new BadRequestException(
-          'Faltan datos en el callback (kr-answer o kr-hash).',
+          'kr-answer o kr-hash faltante o inválido',
         );
       }
 
-      // Validar firma
-      const isValid = this.paymentsService.validateSignature(rawAnswer, hash);
-      console.log('🔐 Firma válida:', isValid);
-
+      // validar firma con HMAC key
+      const isValid = this.paymentsService.validateSignature(
+        rawAnswer,
+        krHash,
+        this.paymentsService.hmacKey,
+      );
       if (!isValid) {
-        return { valid: false, message: 'Firma inválida' };
+        throw new BadRequestException('Firma HMAC inválida (callback front)');
       }
 
-      const answer = JSON.parse(rawAnswer) as IzipayAnswer;
-      console.log('📦 Respuesta de Izipay:', answer);
+      // parsear JSON
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(rawAnswer);
+      } catch {
+        throw new BadRequestException('kr-answer no contiene JSON válido');
+      }
+      if (!isIzipayAnswer(parsed)) {
+        throw new BadRequestException(
+          'kr-answer no tiene la estructura esperada',
+        );
+      }
+      const answer = parsed;
 
-      const transactionUuid = answer.transactions?.[0]?.uuid;
-      const orderId = answer.orderDetails?.orderId || answer.orderId;
+      console.log('✅ Parsed kr-answer (callback):', answer);
 
-      console.log('🆔 OrderId recibido:', orderId);
-      console.log('💳 Estado de pago:', answer.orderStatus);
-
-      // Solo procesar pagos exitosos
       if (answer.orderStatus === 'PAID') {
-        if (!orderId) {
-          console.error('❌ No se recibió orderId en el callback');
-          throw new BadRequestException('No se pudo recuperar el orderId.');
-        }
-
-        const clientEmail = answer.client?.email;
-        const amount = answer.amount ?? 0;
-
-        console.log('💰 Monto pagado:', amount);
-        console.log('📨 Email del cliente:', clientEmail);
-
-        // Guardar en BD
         await this.paymentsService.savePaymentFromCallback(answer);
-        console.log('✅ Pago guardado en base de datos');
 
-        // Confirmación al cliente
+        const clientEmail = answer.customer?.email;
+        const orderId =
+          answer.orderDetails?.orderId ?? answer.orderId ?? 'unknown';
+        const amount = answer.orderDetails?.orderPaidAmount ?? 0;
+
         if (clientEmail) {
           await this.paymentsService.sendPaymentConfirmation(
             clientEmail,
             orderId,
             amount,
           );
-          console.log('📧 Correo de confirmación enviado al cliente');
         }
-
-        // Copia interna
+        // notificación admin
         await this.paymentsService.sendPaymentConfirmation(
           'reservas.incatravelperu@gmail.com',
           orderId,
           amount,
         );
-        console.log('📧 Correo de copia enviado a fatekazama');
-
-        // Buscar orden pendiente
-        console.log('🔎 Buscando orden pendiente con ID:', orderId);
-        const pendingOrder: OrderDocument | null =
-          await this.ordersService.findByOrderId(orderId);
-
-        if (!pendingOrder) {
-          console.error(
-            '❌ No se encontró una orden pendiente con ese orderId',
-          );
-          throw new InternalServerErrorException(
-            'Orden no encontrada con ese ID',
-          );
-        }
-
-        console.log('📦 Orden pendiente encontrada:', pendingOrder);
-
-        // Crear orden confirmada
-        const response = await this.ordersService.create({
-          user: pendingOrder.user?.toString(),
-          items: pendingOrder.items.map((item) => ({
-            tour: item.tour.toString(),
-            startDate: item.startDate.toISOString(),
-            people: item.people,
-            pricePerPerson: item.pricePerPerson,
-            total: item.total,
-            notes: item.notes,
-          })),
-          totalPrice: amount,
-          paymentMethod: 'card',
-          notes: 'Orden generada desde callback Izipay',
-          discountCodeUsed: pendingOrder.discountCodeUsed,
-          customer: {
-            fullName: pendingOrder.customer.fullName,
-            email: pendingOrder.customer.email,
-            phoneNumber: pendingOrder.customer.phone, // ✅ corregido
-            nationality: pendingOrder.customer.nationality,
-          },
-        });
-
-        const createdOrder: OrderDocument = response.data;
-        console.log('✅ Orden creada correctamente:', createdOrder);
 
         return {
           valid: true,
           status: answer.orderStatus,
-          orderId: createdOrder._id,
-          transactionUuid,
-          message: 'Pago exitoso. Orden creada y correos enviados.',
+          orderId,
+          message: 'Pago válido (front). Procesado.',
         };
       }
 
-      // Caso: pago fallido o pendiente
-      console.warn('⚠️ El pago no fue completado:', answer.orderStatus);
       return {
         valid: true,
-        status: answer.orderStatus,
-        message: 'El pago no fue completado',
+        status: answer.orderStatus ?? 'UNKNOWN',
+        message: 'Pago no completado (front)',
       };
-    } catch (error) {
-      console.error('❌ Error en callback:', error);
-      throw new InternalServerErrorException(
-        'Error procesando el callback de pago',
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Error procesando callback';
+      console.error('❌ Error en callback:', message);
+      throw new InternalServerErrorException(message);
+    }
+  }
+
+  // ----------------- IPN BACK -----------------
+  // ----------------- IPN BACK -----------------
+  @Post('ipn')
+  async handleIPN(@Body() body: CallbackBody, @Res() res: Response) {
+    try {
+      console.log('⚡ IPN recibido (server-to-server)');
+
+      const rawAnswer = body['kr-answer'];
+      const krHash = body['kr-hash'];
+
+      if (typeof rawAnswer !== 'string' || typeof krHash !== 'string') {
+        throw new BadRequestException(
+          'kr-answer o kr-hash faltante o inválido (IPN)',
+        );
+      }
+
+      // validar firma con PASSWORD (según doc oficial)
+      const isValid = this.paymentsService.validateSignature(
+        rawAnswer,
+        krHash,
+        this.paymentsService.password,
       );
+      if (!isValid) {
+        throw new BadRequestException('Firma inválida (IPN)');
+      }
+
+      // parsear JSON
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(rawAnswer);
+      } catch {
+        throw new BadRequestException(
+          'kr-answer no contiene JSON válido (IPN)',
+        );
+      }
+      if (!isIzipayAnswer(parsed)) {
+        throw new BadRequestException(
+          'kr-answer no tiene la estructura esperada (IPN)',
+        );
+      }
+      const answer = parsed;
+
+      console.log('✅ Parsed kr-answer (IPN):', answer);
+
+      // Guardar en BD
+      await this.paymentsService.savePaymentFromCallback(answer);
+
+      const orderStatus = answer.orderStatus ?? 'UNKNOWN';
+      const orderId =
+        answer.orderDetails?.orderId ?? answer.orderId ?? 'unknown';
+      const amount = answer.orderDetails?.orderPaidAmount ?? 0;
+      const clientEmail = answer.customer?.email;
+
+      // 👉 Enviar confirmación solo si está pagado
+      if (orderStatus === 'PAID') {
+        if (clientEmail) {
+          await this.paymentsService.sendPaymentConfirmation(
+            clientEmail,
+            orderId,
+            amount,
+          );
+        }
+        // notificación admin
+        await this.paymentsService.sendPaymentConfirmation(
+          'reservas.incatravelperu@gmail.com',
+          orderId,
+          amount,
+          'Pago confirmado - Admin',
+          'Sistema de Pagos',
+        );
+      }
+
+      // Respuesta obligatoria para izipay
+      res.status(200).send(`OK! OrderStatus is ${orderStatus}`);
+
+      return {
+        valid: true,
+        status: orderStatus,
+        orderId,
+        transactionUuid: answer.transactions?.[0]?.uuid ?? null,
+      };
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Error procesando IPN';
+      console.error('❌ Error en IPN:', message);
+      throw new InternalServerErrorException(message);
+    }
+  }
+
+  // ----------------- OTROS MÉTODOS -----------------
+  @Post('formtoken')
+  async generateFormToken(
+    @Body() dto: CreatePaymentDto,
+  ): Promise<FormTokenResponse> {
+    try {
+      return await this.paymentsService.generateFormToken(dto);
+    } catch (err: unknown) {
+      console.error('❌ Error generar formToken:', err);
+      throw new InternalServerErrorException('No se pudo generar el formToken');
     }
   }
 
   @Post('confirm')
   async confirmPayment(
     @Body() body: { email: string; orderId: string; amount: number },
-  ) {
+  ): Promise<{ success: boolean }> {
     try {
-      return await this.paymentsService.sendPaymentConfirmation(
+      await this.paymentsService.sendPaymentConfirmation(
         body.email,
         body.orderId,
         body.amount,
       );
-    } catch (error) {
-      console.error('❌ Error enviando confirmación manual:', error);
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('❌ Error confirmPayment:', err);
       throw new InternalServerErrorException(
         'No se pudo enviar la confirmación de pago',
       );
@@ -202,11 +265,11 @@ export class PaymentsController {
     type: String,
     description: 'UUID de la transacción a capturar',
   })
-  async capture(@Param('uuid') uuid: string) {
+  async capture(@Param('uuid') uuid: string): Promise<unknown> {
     try {
       return await this.paymentsService.captureTransaction(uuid);
-    } catch (error) {
-      console.error('❌ Error capturando transacción:', error);
+    } catch (err: unknown) {
+      console.error('❌ Error capture:', err);
       throw new InternalServerErrorException(
         'No se pudo capturar la transacción',
       );
