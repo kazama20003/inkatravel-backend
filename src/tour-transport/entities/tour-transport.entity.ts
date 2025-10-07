@@ -88,8 +88,13 @@ export class TourTransport {
   @Prop()
   duration: string;
 
+  // 💰 Precio actual
   @Prop()
   price: number;
+
+  // 💵 Precio anterior (para descuentos/promociones)
+  @Prop()
+  oldPrice?: number;
 
   @Prop()
   rating: number;
@@ -115,9 +120,20 @@ export class TourTransport {
   @Prop()
   imageId: string;
 
-  // 👇 Nuevo campo para transportes destacados
   @Prop({ default: false })
   isFeatured: boolean;
+
+  // 🚍 Tipo de servicio (solo: basic o privatePremium)
+  @Prop({
+    type: String,
+    enum: ['basic', 'privatePremium'],
+    default: 'basic',
+  })
+  serviceType: string;
+
+  // 💰 Precio adicional opcional según tipo de servicio
+  @Prop()
+  servicePrice?: number;
 }
 
 export const TourTransportSchema = SchemaFactory.createForClass(TourTransport);

@@ -16,11 +16,12 @@ import { GeoLocationDto } from 'src/common/dto/geoLocation.dto';
 export class RouteStopDto {
   @ValidateNested()
   @Type(() => GeoLocationDto)
-  location: GeoLocationDto; // ✅ requerido
+  location: GeoLocationDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  description: TranslatedTextDto; // ✅ requerido
+  description?: TranslatedTextDto;
 
   @IsOptional()
   @IsString()
@@ -32,26 +33,30 @@ export class RouteStopDto {
 
   @IsOptional()
   @IsString()
-  stopTime?: string; // Ej: "10:30 AM"
+  stopTime?: string; // Ejemplo: "10:30 AM"
 }
 
 export class ItineraryDayDto {
   @IsNumber()
   day: number;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  title: TranslatedTextDto; // ✅ requerido
+  title?: TranslatedTextDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  description: TranslatedTextDto; // ✅ requerido
+  description?: TranslatedTextDto;
 
+  @IsOptional()
   @IsString()
-  imageUrl: string; // ✅ requerido
+  imageUrl?: string;
 
+  @IsOptional()
   @IsString()
-  imageId: string; // ✅ requerido
+  imageId?: string;
 
   @IsOptional()
   @IsArray()
@@ -64,23 +69,23 @@ export class ItineraryDayDto {
 export class CreateTourTransportDto {
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  title: TranslatedTextDto; // ✅ requerido
+  title: TranslatedTextDto;
 
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  description: TranslatedTextDto; // ✅ requerido
+  description: TranslatedTextDto;
 
   @ValidateNested()
   @Type(() => TranslatedTextDto)
-  termsAndConditions: TranslatedTextDto; // ✅ requerido
+  termsAndConditions: TranslatedTextDto;
 
   @ValidateNested()
   @Type(() => GeoLocationDto)
-  origin: GeoLocationDto; // ✅ requerido
+  origin: GeoLocationDto;
 
   @ValidateNested()
   @Type(() => GeoLocationDto)
-  destination: GeoLocationDto; // ✅ requerido
+  destination: GeoLocationDto;
 
   @IsOptional()
   @IsArray()
@@ -101,7 +106,7 @@ export class CreateTourTransportDto {
     ],
     { each: true },
   )
-  availableDays: string[]; // ✅ requerido
+  availableDays: string[];
 
   @IsOptional()
   @IsString()
@@ -117,10 +122,14 @@ export class CreateTourTransportDto {
 
   @IsOptional()
   @IsString()
-  duration?: string; // Ej: "6h"
+  duration?: string;
 
   @IsNumber()
-  price: number; // ✅ requerido
+  price: number;
+
+  @IsOptional()
+  @IsNumber()
+  oldPrice?: number;
 
   @IsOptional()
   @IsNumber()
@@ -155,8 +164,16 @@ export class CreateTourTransportDto {
   @IsOptional()
   @IsString()
   imageId?: string;
-  // 👇 Nuevo campo
-  @IsBoolean()
+
   @IsOptional()
+  @IsBoolean()
   isFeatured?: boolean;
+
+  @IsOptional()
+  @IsEnum(['basic', 'privatePremium'])
+  serviceType?: string;
+
+  @IsOptional()
+  @IsNumber()
+  servicePrice?: number;
 }
